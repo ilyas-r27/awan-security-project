@@ -286,4 +286,4 @@ pytest -q
 
 ## Git
 
-Repo tim: https://github.com/CheekyMaestro/SecurityNetworkGroupProject. Kerja di branch `be` (FE di `fe`). Commit kecil per fase dengan pesan singkat bahasa Inggris (`feat: streaming file encryption`). Gabung ke `main` lewat PR, jangan push ke `main` langsung. Jangan commit `.env`, `storage/`, atau `*.db`.
+Repo tim: https://github.com/ilyas-r27/awan-security-project. Kerja di branch `be` (FE di `fe`). Commit kecil per fase dengan pesan singkat bahasa Inggris (`feat: streaming file encryption`). Gabung ke `main` lewat PR, jangan push ke `main` langsung. Jangan commit `.env`, `storage/`, atau `*.db`.

@@ -7,7 +7,7 @@ Sumber kebenaran: **PRD Gabungan** (`docs/PRD.md` kalau sudah ditaruh di repo; v
 
 ## Batas wilayah (wajib)
 
-Repo tim: https://github.com/CheekyMaestro/SecurityNetworkGroupProject. Kamu bekerja di branch **`fe`**. Backend belum ada; Yae membangunnya paralel di branch **`be`** dengan struktur folder di `README.md`.
+Repo tim: https://github.com/ilyas-r27/awan-security-project. Kamu bekerja di branch **`fe`**. Backend belum ada; Yae membangunnya paralel di branch **`be`** dengan struktur folder di `README.md`.
 
 Karena repo masih kosong, kamu juga membuat **kerangka aplikasi** yang nanti dipakai bersama:
 - `app/__init__.py`, `app/routes/__init__.py`

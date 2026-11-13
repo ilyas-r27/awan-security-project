@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.db import Base, engine
 from app import models  # noqa: F401  (daftarkan tabel ke Base.metadata)
 from app.security.sessions import response_sets_session, set_session_cookie
-from app.routes import auth, claims, files, keys, packages, profile, stats, stores
+from app.routes import access, auth, claims, files, keys, packages, profile, stats, stores
 
 try:
     import app.routes.pages as pages  # milik FE (branch fe)
@@ -94,7 +94,7 @@ async def http_handler(_request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": detail}, headers=exc.headers)
 
 
-for r in (auth, profile, packages, files, stores, claims, stats, keys):
+for r in (auth, profile, packages, files, stores, claims, stats, keys, access):
     app.include_router(r.router)
 if pages is not None:
     app.include_router(pages.router)

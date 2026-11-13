@@ -287,3 +287,68 @@ class PublicKeyOut(BaseModel):
     algorithm: str = "RSA-2048"
     public_key_pem: str
     fingerprint: str
+
+
+# --- Assignment 2: permintaan akses data ---
+
+class AccessScope(BaseModel):
+    profile: bool = False
+    id_card: bool = False
+    documents: bool = False
+
+
+class AccessRequestCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    scope: AccessScope
+
+
+class AccessApprove(BaseModel):
+    valid_days: int = Field(default=7, ge=1, le=30)
+
+
+class AccessRedeem(BaseModel):
+    access_code: str = Field(min_length=1, max_length=2000)
+
+
+class AccessUser(BaseModel):
+    id: int
+    username: str
+
+
+class AccessRequestOut(BaseModel):
+    id: int
+    requester: AccessUser
+    owner: AccessUser
+    scope: AccessScope
+    status: Literal["menunggu", "disetujui", "ditolak", "dicabut", "kedaluwarsa"]
+    created_at: str
+    decided_at: str | None
+    expires_at: str | None
+    redeemed: bool
+
+
+class AccessRequestList(BaseModel):
+    items: list[AccessRequestOut]
+
+
+class AccessCodeFields(BaseModel):
+    access_code: str
+    code_algorithm: str
+    requester_fingerprint: str
+
+
+class AccessApproved(AccessRequestOut, AccessCodeFields):
+    pass
+
+
+class AccessCodeOut(AccessCodeFields):
+    request_id: int
+    expires_at: str | None
+
+
+class AccessDataOut(BaseModel):
+    request_id: int
+    owner: AccessUser
+    expires_at: str | None
+    profile: ProfileDataOut | None
+    files: list[ClaimFile]

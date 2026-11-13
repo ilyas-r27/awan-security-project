@@ -20,6 +20,7 @@ This README is written so that you can come back after a long time, run the app 
 8. [Tests and benchmark](#8-tests-and-benchmark)
 9. [Known limitations](#9-known-limitations)
 10. [Glossary](#10-glossary)
+12. [Assignment 2: data access requests](#12-assignment-2-data-access-requests-key-management)
 
 ---
 
@@ -361,6 +362,33 @@ These are deliberate trade-offs or things we did not have time for. Be ready to 
 | **404 instead of 403**     | "Not found" instead of "forbidden", so an attacker cannot learn that a resource exists.                                                     |
 
 ---
+
+## 12. Assignment 2: data access requests (key management)
+
+A buyer can ask to see another buyer's private data (profile, ID card photo, documents). Nothing is shared until the owner approves and the requester pastes an access code that was sent outside the app.
+
+```
+budi  -> asks to see dzaky's data (ticks profile / ID card / documents)
+dzaky -> approves; the server creates a random AES-256 share key on dzaky's behalf
+           - a snapshot of the profile + file list is encrypted with the share key
+           - each shared file's keys are re-wrapped with the share key (AES-GCM)
+           - the share key is stored wrapped with dzaky's AES key, never in plaintext
+           - the share key is encrypted with budi's RSA-2048 public key (OAEP-SHA256) = access code
+dzaky -> sends the access code to budi by WhatsApp / email
+budi  -> pastes the code; the server opens it with budi's private key, checks it, and
+         stores the share key wrapped with budi's AES key so he does not paste it again
+```
+
+Access lasts 7 days by default (1 to 30, chosen on approval) and the owner can revoke it. On expiry or revocation every copy of the share key and the re-wrapped file keys are deleted. The RSA key pairs come from `app/crypto/rsa.py` and `app/services/keypairs.py`; the flow lives in `app/services/access.py`; endpoints are listed in `docs/api-contract.md`.
+
+Demo data with one active and one expired request:
+
+```
+python scripts/seed.py --password demo12345
+python scripts/seed_akses.py --password demo12345
+```
+
+This creates buyers `budi` and `citra` and sample data for `dzaky` (dummy profile, a plain image instead of a real ID card, a sample PDF). `budi`'s request is active and his access code is printed in the terminal; `citra`'s request has already expired.
 
 ## Team
 

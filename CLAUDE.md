@@ -243,6 +243,25 @@ Route halaman (`/masuk`, `/daftar`, `/brankas`, `/unboxing/baru`, `/paket/{id}`,
 
 Ditunda (setelah Assignment 1): fitur chat pembeli dan toko di web. Sementara percakapan memakai balasan klaim.
 
+## Assignment 2: Key Management (berbagi data antar pembeli)
+
+Tugas dari slide: (1) user bisa meminta melihat data pribadi user lain, termasuk gambar dan dokumen; (2) user yang diminta membuat kunci simetris untuk membagikan data; (3) kunci simetris dikirim ke peminta lewat jalur lain (WA/email) tapi harus dienkripsi asimetris; (4) kunci simetris disimpan aman di sistem.
+
+Fondasi RSA dibuat Fathan (`app/crypto/rsa.py`, `app/services/keypairs.py`, `/keys/*`): RSA-2048 per user, private key terbungkus AES-GCM dengan key AES user, enkripsi RSA-OAEP-SHA256. Alur permintaan dikerjakan backend (kita).
+
+Keputusan (dari Yae, 2026-11-13):
+- Hanya pembeli ke pembeli. Tidak boleh ke diri sendiri. Toko memakai jalur klaim.
+- Peminta mencentang cakupan: profil, foto KTP (yang terbaru), dokumen (semua dokumen pemilik saat disetujui). Video tidak termasuk. Pemilik menyetujui atau menolak seluruhnya.
+- Saat disetujui, server membuat **kunci berbagi** acak AES-256 atas nama pemilik:
+  - snapshot JSON `{profile, files:[{id, category, name, mime_type, size_bytes}]}` dienkripsi AES dengan kunci berbagi;
+  - kunci file (3 algoritma) tiap file dalam cakupan dibungkus AES-GCM dengan kunci berbagi (`access_file_keys`), bukan ke `file_keys`, jadi `/files/{id}/download` biasa tetap 404 untuk peminta;
+  - kunci berbagi disimpan terbungkus AES-GCM dengan key AES pemilik, plus SHA-256-nya untuk verifikasi;
+  - kunci berbagi dienkripsi RSA-OAEP dengan public key peminta = **kode akses** (base64). Pemilik menyalin dan mengirimnya lewat WA/email.
+- Peminta menempel kode akses sekali (redeem): server membuka dengan private key peminta, cocokkan SHA-256, lalu simpan kunci berbagi terbungkus key AES peminta. Setelah itu tidak perlu menempel ulang.
+- Masa berlaku default 7 hari (pemilik boleh pilih 1 sampai 30 hari). Pemilik bisa mencabut. Saat dicabut atau kedaluwarsa, bungkus kunci untuk peminta, `access_file_keys`, dan snapshot dihapus.
+- Status: `menunggu`, `disetujui`, `ditolak`, `dicabut`, dan `kedaluwarsa` (dihitung dari `expires_at`).
+- `scripts/seed_akses.py` menyiapkan contoh demo: satu akses aktif dan satu yang sudah kedaluwarsa.
+
 ## Urutan kerja
 
 Kerjakan satu fase, jalankan test, lalu commit sebelum lanjut. Di akhir tiap fase, ringkas apa yang selesai dan apa yang perlu aku cek.

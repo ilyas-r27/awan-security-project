@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -198,3 +199,60 @@ class UserKeypair(Base):
     priv_wrapped: Mapped[bytes] = mapped_column(LargeBinary)
     priv_tag: Mapped[bytes] = mapped_column(LargeBinary(16))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AccessRequest(Base):
+    """Permintaan melihat data pribadi pembeli lain (Assignment 2).
+
+    Kunci berbagi tidak pernah disimpan polos: terbungkus AES-GCM untuk pemilik (`owner_*`),
+    dan untuk peminta (`req_*`) baru setelah kode akses (RSA) ditempel.
+    """
+
+    __tablename__ = "access_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('menunggu', 'disetujui', 'ditolak', 'dicabut')", name="ck_access_status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    requester_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    scope_profile: Mapped[bool] = mapped_column(Boolean, default=False)
+    scope_id_card: Mapped[bool] = mapped_column(Boolean, default=False)
+    scope_documents: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(10), default="menunggu")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    key_sha256: Mapped[bytes | None] = mapped_column(LargeBinary(32), nullable=True)
+    owner_nonce: Mapped[bytes | None] = mapped_column(LargeBinary(12), nullable=True)
+    owner_wrapped: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    owner_tag: Mapped[bytes | None] = mapped_column(LargeBinary(16), nullable=True)
+    req_nonce: Mapped[bytes | None] = mapped_column(LargeBinary(12), nullable=True)
+    req_wrapped: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    req_tag: Mapped[bytes | None] = mapped_column(LargeBinary(16), nullable=True)
+    # RSA-OAEP(public key peminta, kunci berbagi): hanya bisa dibuka private key peminta.
+    access_code: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    snapshot_iv: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    snapshot_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
+    file_keys: Mapped[list["AccessFileKey"]] = relationship(cascade="all, delete-orphan")
+
+
+class AccessFileKey(Base):
+    """Kunci file pemilik yang dibungkus dengan kunci berbagi (bukan dengan key peminta)."""
+
+    __tablename__ = "access_file_keys"
+    __table_args__ = (
+        UniqueConstraint("request_id", "file_id", "algorithm", name="uq_accesskey_req_file_alg"),
+        CheckConstraint(ALG_CHECK, name="ck_accesskey_alg"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("access_requests.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    algorithm: Mapped[str] = mapped_column(String(3))
+    wrap_nonce: Mapped[bytes] = mapped_column(LargeBinary(12))
+    wrapped_key: Mapped[bytes] = mapped_column(LargeBinary)
+    wrap_tag: Mapped[bytes] = mapped_column(LargeBinary(16))

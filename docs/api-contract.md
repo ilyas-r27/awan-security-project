@@ -89,3 +89,55 @@ File yang ditambahkan ke paket selama klaim masih `diajukan`/`ditinjau` (mis. se
 - `avg_enc_ms_per_mb` / `avg_dec_ms_per_mb`: total waktu ÷ total MB (tertimbang). Bernilai `null` kalau belum ada data; `avg_dec_ms_per_mb` baru terisi setelah file pernah diunduh sampai selesai dengan algoritma itu.
 - `total_cipher_bytes`: ukuran ciphertext di disk. AES/DES sedikit lebih besar dari aslinya karena padding; RC4 sama persis.
 - `per_category` hanya berisi kategori yang punya file, urutan video → document → id_card.
+
+## Assignment 2: permintaan akses data (`/access-requests`)
+
+Pembeli meminta melihat data pribadi pembeli lain. Semua endpoint khusus pembeli (toko → 403). Bukan pihak dalam permintaan → 404.
+
+Alur: peminta mengajukan → pemilik menyetujui dan mendapat **kode akses** → pemilik mengirim kode lewat WA/email (di luar aplikasi) → peminta menempel kode → peminta bisa melihat data sampai kedaluwarsa atau dicabut.
+
+Bentuk satu permintaan (dipakai di semua respons di bawah):
+
+```json
+{"id": 1, "requester": {"id": 5, "username": "budi"}, "owner": {"id": 3, "username": "dzaky"},
+ "scope": {"profile": true, "id_card": true, "documents": true},
+ "status": "disetujui", "created_at": "2026-11-13T14:00:00+07:00", "decided_at": "2026-11-13T14:05:00+07:00",
+ "expires_at": "2026-11-20T14:05:00+07:00", "redeemed": false}
+```
+
+`status`: `menunggu`, `disetujui`, `ditolak`, `dicabut`, `kedaluwarsa`.
+
+| Method | Path | Siapa | Body | Respons |
+| --- | --- | --- | --- | --- |
+| POST | `/access-requests` | peminta | `{"username": "dzaky", "scope": {"profile": true, "id_card": true, "documents": false}}` | 201, satu permintaan |
+| GET | `/access-requests?box=incoming` | pemilik | | `{"items": [...]}` permintaan yang masuk |
+| GET | `/access-requests?box=outgoing` | peminta | | `{"items": [...]}` permintaan yang dikirim |
+| GET | `/access-requests/{id}` | keduanya | | satu permintaan |
+| POST | `/access-requests/{id}/approve` | pemilik | `{"valid_days": 7}` (opsional, 1–30) | satu permintaan + `access_code`, `code_algorithm`, `requester_fingerprint` |
+| GET | `/access-requests/{id}/code` | pemilik | | `{"request_id", "expires_at", "access_code", "code_algorithm", "requester_fingerprint"}` untuk menyalin ulang |
+| POST | `/access-requests/{id}/reject` | pemilik | | satu permintaan (`ditolak`) |
+| POST | `/access-requests/{id}/revoke` | pemilik | | satu permintaan (`dicabut`) |
+| POST | `/access-requests/{id}/redeem` | peminta | `{"access_code": "<teks dari WA>"}` | satu permintaan (`redeemed: true`) |
+| GET | `/access-requests/{id}/data` | peminta | | lihat di bawah |
+| GET | `/access-requests/{id}/files/{file_id}/download?alg=aes` | peminta | | isi file asli (sama seperti `/files/{id}/download`) |
+
+`GET /access-requests/{id}/data`:
+
+```json
+{"request_id": 1, "owner": {"id": 3, "username": "dzaky"}, "expires_at": "2026-11-20T14:05:00+07:00",
+ "profile": {"full_name": "Dzaky A.", "nik": "3578…", "...": "11 field seperti GET /profile"},
+ "files": [{"id": 7, "category": "id_card", "name": "ktp.png", "mime_type": "image/png", "size_bytes": 1234},
+           {"id": 9, "category": "document", "name": "slip-gaji.pdf", "mime_type": "application/pdf", "size_bytes": 5678}]}
+```
+
+`profile` bernilai `null` kalau tidak diminta. Video tidak pernah ikut.
+
+Error penting (semua 400, `detail` bisa langsung ditampilkan):
+- "Pilih minimal satu data yang diminta", "Tidak bisa meminta data sendiri", "Masih ada permintaan yang menunggu atau aktif ke pembeli ini"
+- username bukan pembeli atau tidak ada → 404 "Pembeli tidak ditemukan"
+- "Kode akses tidak valid", "Tempelkan kode akses dari pemilik terlebih dahulu"
+- "Akses sudah kedaluwarsa", "Akses sudah dicabut pemilik", "Permintaan belum disetujui", "Permintaan ini sudah diproses"
+
+Saran tampilan:
+- `access_code` panjangnya sekitar 344 karakter base64. Sediakan tombol **Salin** dan tautan **Kirim lewat WhatsApp** (`https://wa.me/?text=` + kode yang di-URL-encode). Spasi dan baris baru saat ditempel tetap diterima.
+- Tampilkan `requester_fingerprint` ke pemilik supaya bisa dicocokkan dengan peminta.

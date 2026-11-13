@@ -184,3 +184,17 @@ class DecryptLog(Base):
     dec_time_ms: Mapped[float] = mapped_column(Float)
     size_bytes: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserKeypair(Base):
+    """Pasangan kunci RSA per user. Private key hanya tersimpan terbungkus AES-GCM (key AES user)."""
+
+    __tablename__ = "user_keypairs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    public_pem: Mapped[str] = mapped_column(String(1024))
+    priv_nonce: Mapped[bytes] = mapped_column(LargeBinary(12))
+    priv_wrapped: Mapped[bytes] = mapped_column(LargeBinary)
+    priv_tag: Mapped[bytes] = mapped_column(LargeBinary(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

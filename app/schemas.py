@@ -271,3 +271,19 @@ class StatsOut(BaseModel):
 
 class ErrorOut(BaseModel):
     detail: str
+
+
+class KeypairOut(BaseModel):
+    has_keypair: bool
+    algorithm: str = "RSA-2048"
+    public_key_pem: str | None
+    fingerprint: str | None
+    created_at: str | None
+
+
+class PublicKeyOut(BaseModel):
+    user_id: int
+    username: str
+    algorithm: str = "RSA-2048"
+    public_key_pem: str
+    fingerprint: str
